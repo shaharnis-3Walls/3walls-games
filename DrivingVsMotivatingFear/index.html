@@ -394,6 +394,9 @@
       preventedItems.forEach(item => item.remove());
       motivatedItems.forEach(item => item.remove());
       
+      // Reset main image display
+      mainImage.style.display = "block";
+      
       // Shuffle images again
       for (let i = images.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
