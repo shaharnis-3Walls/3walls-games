@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="he">
+<head>
+  <meta charset="UTF-8" />
+  <title>משחק קטגוריות: פחד מונע או פחד מניע?</title>
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      direction: rtl;
+      background-color: #f0f0f0;
+      overflow: hidden;
+    }
+    #game-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      height: 100%;
+      padding: 1vh 0;
+      box-sizing: border-box;
+    }
+    h1 {
+      margin: 2vh 0;
+      font-size: 5vh;
+    }
+    #image-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 3vw;
+      margin-top: 1vh;
+      position: relative;
+      width: 100%;
+    }
+    .left-buttons, .right-buttons {
+      display: flex;
+      flex-direction: column;
+      gap: 1vh;
+      align-items: center;
+    }
+    #main-image {
+      width: 22vw;
+      height: auto;
+      border-radius: 10px;
+      box-shadow: 0 0 10px #aaa;
+      flex-shrink: 0;
+    }
+    .choice-button {
+      background-color: #f4a63f;
+      color: black;
+      font-size: 2vh;
+      padding: 2vh 1vw;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      width: 12vw;
+      min-width: 120px;
+      height: 6vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1;
+    }
+    .choice-button:hover {
+      background-color: #e8951a;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+    #restartBtn {
+      background-color: #2196f3;
+      color: white;
+    }
+    #restartBtn:hover {
+      background-color: #1976d2;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+    #checkBtn {
+      background-color: #2e7d32;
+      color: white;
+      font-size: 2vh;
+      padding: 2vh 1vw;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      font-weight: bold;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+      width: 12vw;
+      min-width: 120px;
+      height: 6vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      line-height: 1;
+    }
+    #checkBtn:hover {
+      background-color: #1b5e20;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
+    }
+    .board-container {
+      display: flex;
+      justify-content: center;
+      gap: 5vw;
+      width: 100%;
+      height: calc(30%);
+      box-sizing: border-box;
+    }
+    .board {
+      border: 2px dashed #aaa;
+      padding: 1vh;
+      border-radius: 10px;
+      background: white;
+      width: 40vw;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(84px, 1fr));
+      grid-template-rows: auto;
+      gap: 1.4vh;
+      height: 100%;
+      box-sizing: border-box;
+      overflow: visible;
+      align-content: start;
+      position: relative;
+      z-index: 1;
+    }
+    .board-title {
+      font-weight: bold;
+      margin-bottom: 0.5vh;
+      grid-column: 1 / -1;
+      font-size: 1.5vh;
+    }
+    .grid-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 8px;
+      transition: transform 0.3s ease, z-index 0.3s ease;
+      cursor: pointer;
+    }
+    .grid-item {
+      width: 100%;
+      aspect-ratio: 1;
+      max-height: 100%;
+      min-width: 0;
+      min-height: 0;
+      position: relative;
+      overflow: visible;
+    }
+    .grid-item img:hover {
+      transform: scale(1.5);
+      z-index: 100;
+      position: relative;
+      box-shadow: 0 8px 16px rgba(0,0,0,0.3);
+    }
+    .grid-item.enlarged img {
+      transform: scale(2);
+      z-index: 200;
+      position: relative;
+      box-shadow: 0 12px 24px rgba(0,0,0,0.4);
+    }
+    .correct {
+      border: 3px solid green;
+      position: relative;
+    }
+    .incorrect {
+      border: 3px solid red;
+      position: relative;
+    }
+    .correct::after {
+      content: "✓";
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: green;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 30;
+    }
+    .incorrect::after {
+      content: "✗";
+      position: absolute;
+      top: -5px;
+      right: -5px;
+      background-color: red;
+      color: white;
+      border-radius: 50%;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      font-weight: bold;
+      z-index: 30;
+    }
+    
+    /* Animation styles */
+    .moving-image {
+      position: fixed;
+      z-index: 1000;
+      pointer-events: none;
+      transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 8px;
+    }
+    
+    .grid-item {
+      opacity: 0;
+      transform: scale(0.8);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    
+    .grid-item.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+  </style>
+</head>
+<body>
+  <div id="game-container">
+    <h1>משחק קטגוריות: פחד מונע או פחד מניע?</h1>
+    <div id="image-container">
+      <div class="left-buttons">
+        <button class="choice-button" id="preventedBtn">פחד מונע</button>
+        <button id="checkBtn">בדוק תשובות</button>
+      </div>
+      <img id="main-image" src="" alt="תמונה">
+      <div class="right-buttons">
+        <button class="choice-button" id="motivatedBtn">פחד מניע</button>
+        <button class="choice-button" id="restartBtn">התחל מחדש</button>
+      </div>
+    </div>
+    <div class="board-container">
+      <div class="board" id="preventedBoard">
+        <div class="board-title">פחד מונע</div>
+      </div>
+      <div class="board" id="motivatedBoard">
+        <div class="board-title">פחד מניע</div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const images = [
+      { src: "1.png", correct: "prevented" },
+      { src: "2.png", correct: "prevented" },
+      { src: "3.png", correct: "prevented" },
+      { src: "4.png", correct: "prevented" },
+      { src: "5.png", correct: "prevented" },
+      { src: "6.png", correct: "prevented" },
+      { src: "7.png", correct: "prevented" },
+      { src: "8.png", correct: "prevented" },
+      { src: "9.png", correct: "prevented" },
+      { src: "10.png", correct: "motivated" },
+      { src: "11.png", correct: "motivated" },
+      { src: "12.png", correct: "motivated" },
+      { src: "13.png", correct: "motivated" },
+      { src: "14.png", correct: "motivated" },
+      { src: "15.png", correct: "motivated" },
+      { src: "16.png", correct: "motivated" },
+      { src: "17.png", correct: "motivated" },
+      { src: "18.png", correct: "motivated" }
+    ];
+
+    for (let i = images.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [images[i], images[j]] = [images[j], images[i]];
+    }
+
+    let currentIndex = 0;
+    let currentlyEnlarged = null; // Track the currently enlarged element
+    const mainImage = document.getElementById("main-image");
+    const motivatedBoard = document.getElementById("motivatedBoard");
+    const preventedBoard = document.getElementById("preventedBoard");
+
+    function showNextImage() {
+      if (currentIndex < images.length) {
+        mainImage.src = images[currentIndex].src;
+      } else {
+        mainImage.style.display = "none";
+      }
+    }
+
+    function handleChoice(choice) {
+      if (currentIndex >= images.length) return;
+      
+      // Get the main image position and size
+      const mainImageRect = mainImage.getBoundingClientRect();
+      const targetBoard = choice === "motivated" ? motivatedBoard : preventedBoard;
+      
+      // Create the animated image element
+      const movingImg = document.createElement("img");
+      movingImg.src = images[currentIndex].src;
+      movingImg.className = "moving-image";
+      
+      // Set initial position to match main image
+      movingImg.style.left = mainImageRect.left + "px";
+      movingImg.style.top = mainImageRect.top + "px";
+      movingImg.style.width = mainImageRect.width + "px";
+      movingImg.style.height = mainImageRect.height + "px";
+      
+      document.body.appendChild(movingImg);
+      
+      // Create the final container (initially hidden)
+      const container = document.createElement("div");
+      container.className = "grid-item";
+      container.dataset.correct = images[currentIndex].correct;
+      container.dataset.user = choice;
+
+      const img = document.createElement("img");
+      img.src = images[currentIndex].src;
+      
+      // Add click event for enlarging/shrinking
+      img.addEventListener('click', function(e) {
+        e.stopPropagation(); // Prevent event bubbling
+        
+        // If this element is already enlarged, shrink it
+        if (currentlyEnlarged === container) {
+          container.classList.remove('enlarged');
+          currentlyEnlarged = null;
+        } else {
+          // Remove enlarged class from previously enlarged element
+          if (currentlyEnlarged) {
+            currentlyEnlarged.classList.remove('enlarged');
+          }
+          // Enlarge the current element
+          container.classList.add('enlarged');
+          currentlyEnlarged = container;
+        }
+      });
+      
+      container.appendChild(img);
+      targetBoard.appendChild(container);
+      
+      // Calculate target position
+      setTimeout(() => {
+        const containerRect = container.getBoundingClientRect();
+        
+        // Animate to target position
+        movingImg.style.left = containerRect.left + "px";
+        movingImg.style.top = containerRect.top + "px";
+        movingImg.style.width = containerRect.width + "px";
+        movingImg.style.height = containerRect.height + "px";
+        
+        // After animation completes, show the real element and remove the moving one
+        setTimeout(() => {
+          container.classList.add('visible');
+          document.body.removeChild(movingImg);
+        }, 800); // Match the transition duration
+      }, 50);
+
+      currentIndex++;
+      showNextImage();
+    }
+
+    document.getElementById("motivatedBtn").onclick = () => handleChoice("motivated");
+    document.getElementById("preventedBtn").onclick = () => handleChoice("prevented");
+    document.getElementById("checkBtn").onclick = () => {
+      document.querySelectorAll(".grid-item").forEach(item => {
+        item.classList.remove("correct", "incorrect");
+        if (item.dataset.correct === item.dataset.user) {
+          item.classList.add("correct");
+        } else {
+          item.classList.add("incorrect");
+        }
+      });
+    };
+
+    // Restart game function
+    function restartGame() {
+      // Reset current index
+      currentIndex = 0;
+      currentlyEnlarged = null;
+      
+      // Clear both boards
+      const preventedItems = preventedBoard.querySelectorAll('.grid-item');
+      const motivatedItems = motivatedBoard.querySelectorAll('.grid-item');
+      
+      preventedItems.forEach(item => item.remove());
+      motivatedItems.forEach(item => item.remove());
+      
+      // Shuffle images again
+      for (let i = images.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [images[i], images[j]] = [images[j], images[i]];
+      }
+      
+      // Show first image
+      showNextImage();
+    }
+
+    document.getElementById("restartBtn").onclick = restartGame;
+
+    // Add click event to document to handle clicking outside elements
+    document.addEventListener('click', function(e) {
+      // Check if click was outside any grid item
+      if (!e.target.closest('.grid-item') && currentlyEnlarged) {
+        currentlyEnlarged.classList.remove('enlarged');
+        currentlyEnlarged = null;
+      }
+    });
+
+    showNextImage();
+  </script>
+</body>
+</html>
