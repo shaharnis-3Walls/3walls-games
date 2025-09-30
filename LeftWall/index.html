@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>גן של תקווה</title>
+    <title>גן של תקווה - קיר שמאלי</title>
     <style>
         body, html {
             margin: 0;
@@ -14,35 +14,17 @@
             background-color: #000;
         }
 
-        #container {
-            width: 5760px; /* 3 walls * 1920px */
-            height: 1080px;
-            display: flex;
-            position: relative;
-            background-color: #000;
-        }
-
-        .wall {
+        #wall1 {
             width: 1920px;
             height: 1080px;
+            background-image: url('https://i.postimg.cc/wjwqHq1s/image.png');
             background-size: cover;
             background-position: center;
             background-repeat: no-repeat;
             position: relative;
         }
-
-        #wall1 {
-            background-image: url('https://i.postimg.cc/wjwqHq1s/image.png');
-        }
-
-        #wall2 {
-            background-image: url('https://i.postimg.cc/wMM381VM/image.png');
-        }
-
-        #wall3 {
-            background-image: url('https://i.postimg.cc/ZYQ5vKHP/image.png');
-        }
-
+        
+        /* נקודות חמות */
         .hotspot {
             position: absolute;
             width: 80px;
@@ -53,12 +35,14 @@
             cursor: pointer;
             z-index: 10;
             transform: translate(-50%, -50%);
+            transition: transform 0.3s ease-in-out;
         }
         .hotspot:hover {
             transform: scale(1.2) translate(-42%, -42%);
             background-color: rgba(255, 255, 255, 0.5);
         }
 
+        /* מילים */
         .word-display {
             position: absolute;
             color: #FFF;
@@ -80,11 +64,7 @@
 </head>
 <body>
 
-    <div id="container">
-        <div id="wall1" class="wall"></div>
-        <div id="wall2" class="wall"></div>
-        <div id="wall3" class="wall"></div>
-    </div>
+    <div id="wall1" class="wall"></div>
     
 <script>
     const WORDS_MAP = {
@@ -97,39 +77,36 @@
         brown: ['שורשים', 'חיבור', 'אדמה', 'יחד', 'ערבות הדדית', 'אחריות']
     };
 
-    const FLOWERS = [
-        // מיקומים על הקיר השמאלי (הפרחים)
-        { color: 'yellow', x: 400, y: 650 },
-        { color: 'red', x: 800, y: 850 },
-        { color: 'blue', x: 1200, y: 400 },
-        { color: 'purple', x: 1600, y: 750 },
-        { color: 'pink', x: 250, y: 900 },
-        { color: 'white', x: 950, y: 250 },
-        { color: 'white', x: 1500, y: 150 },
-        
-        // מיקומים על הקיר הימני (הפרחים)
-        { color: 'yellow', x: 4100, y: 600 },
-        { color: 'red', x: 4400, y: 750 },
-        { color: 'blue', x: 4700, y: 450 },
-        { color: 'purple', x: 5000, y: 850 },
-        { color: 'pink', x: 5300, y: 900 },
-        { color: 'white', x: 4500, y: 200 },
-        { color: 'white', x: 5200, y: 300 },
+    // מיקומים של הנקודות החמות על הקיר השמאלי
+    const HOTSPOTS = [
+        { color: 'yellow', x: 250, y: 700 },
+        { color: 'red', x: 500, y: 850 },
+        { color: 'blue', x: 850, y: 600 },
+        { color: 'purple', x: 1100, y: 800 },
+        { color: 'pink', x: 1500, y: 950 },
+        { color: 'white', x: 1650, y: 400 },
+        { color: 'brown', x: 1350, y: 750 },
+        { color: 'black', x: 960, y: 540 } // נקודה מרכזית למילה "תקווה"
     ];
     
-    const container = document.getElementById('container');
+    const NEW_WORDS_MAP = {
+        ...WORDS_MAP,
+        'black': ['תקווה']
+    };
+
+    const wall = document.getElementById('wall1');
     
-    FLOWERS.forEach(flower => {
+    HOTSPOTS.forEach(hotspotData => {
         const hotspot = document.createElement('div');
         hotspot.className = 'hotspot';
-        hotspot.style.right = `${flower.x}px`;
-        hotspot.style.top = `${flower.y}px`;
-        hotspot.dataset.color = flower.color;
-        container.appendChild(hotspot);
+        hotspot.style.right = `${hotspotData.x}px`;
+        hotspot.style.top = `${hotspotData.y}px`;
+        hotspot.dataset.color = hotspotData.color;
+        wall.appendChild(hotspot);
     });
 
     function getRandomWord(color) {
-        const words = WORDS_MAP[color];
+        const words = NEW_WORDS_MAP[color] || WORDS_MAP[color];
         if (!words || words.length === 0) return null;
         const randomIndex = Math.floor(Math.random() * words.length);
         return words[randomIndex];
@@ -141,19 +118,23 @@
         wordDisplay.className = 'word-display';
         wordDisplay.textContent = word;
         
-        wordDisplay.style.left = `${hotspot.offsetLeft + hotspot.offsetWidth / 2}px`;
-        wordDisplay.style.top = `${hotspot.offsetTop - 50}px`;
-        
-        container.appendChild(wordDisplay);
+        const hotspotRect = hotspot.getBoundingClientRect();
+        wordDisplay.style.left = `${hotspotRect.left + hotspotRect.width / 2}px`;
+        wordDisplay.style.top = `${hotspotRect.top - 80}px`;
+
+        document.body.appendChild(wordDisplay);
     }
     
-    container.addEventListener('click', (event) => {
+    wall.addEventListener('click', (event) => {
         const hotspot = event.target;
         if (hotspot && hotspot.classList.contains('hotspot')) {
             const color = hotspot.dataset.color;
             const word = getRandomWord(color);
             if (word) {
                 showWord(hotspot, word);
+                hotspot.style.pointerEvents = 'none';
+                hotspot.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                hotspot.style.border = '2px solid rgba(255, 255, 255, 0.3)';
             }
         }
     });
@@ -161,6 +142,12 @@
     function reset() {
         const words = document.querySelectorAll('.word-display');
         words.forEach(word => word.remove());
+        const hotspots = document.querySelectorAll('.hotspot');
+        hotspots.forEach(hotspot => {
+            hotspot.style.pointerEvents = 'auto';
+            hotspot.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+            hotspot.style.border = '2px solid rgba(255, 255, 255, 0.7)';
+        });
     }
 </script>
 
