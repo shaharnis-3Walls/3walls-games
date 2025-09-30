@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>גן של תקווה</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Arial Hebrew', sans-serif;
+            cursor: pointer;
+            background-color: #000;
+        }
+
+        #container {
+            width: 5760px; /* 3 walls * 1920px */
+            height: 1080px;
+            display: flex;
+            position: relative;
+            background-color: #000;
+        }
+
+        .wall {
+            width: 1920px;
+            height: 1080px;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+
+        #wall1 {
+            background-image: url('https://i.postimg.cc/wjwqHq1s/image.png');
+        }
+
+        #wall2 {
+            background-image: url('https://i.postimg.cc/wMM381VM/image.png');
+        }
+
+        #wall3 {
+            background-image: url('https://i.postimg.cc/ZYQ5vKHP/image.png');
+        }
+
+        .hotspot {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            z-index: 10;
+            transform: translate(-50%, -50%);
+        }
+        .hotspot:hover {
+            transform: scale(1.2) translate(-42%, -42%);
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        .word-display {
+            position: absolute;
+            color: #FFF;
+            font-size: 80px;
+            font-weight: bold;
+            text-shadow: 4px 4px 10px rgba(0,0,0,0.9);
+            text-align: center;
+            white-space: nowrap;
+            animation: fadeIn 1.5s forwards;
+            pointer-events: none;
+            z-index: 20;
+            transform: translate(-50%, -50%);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8) translate(-60%, -60%); }
+            to { opacity: 1; transform: scale(1) translate(-50%, -50%); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container">
+        <div id="wall1" class="wall"></div>
+        <div id="wall2" class="wall"></div>
+        <div id="wall3" class="wall"></div>
+    </div>
+    
+<script>
+    const WORDS_MAP = {
+        yellow: ['אור', 'תקווה', 'שמחה'],
+        red: ['אהבה', 'אומץ', 'חוזק', 'נחישות'],
+        blue: ['שקט', 'ביטחון', 'שלווה', 'מרגוע'],
+        purple: ['אמונה', 'כבוד', 'חופש'],
+        pink: ['טוב לב', 'דאגה', 'אכפתיות', 'עזרה', 'חמלה'],
+        white: ['התחלה', 'צמיחה', 'שלום', 'טוהר', 'חלום'],
+        brown: ['שורשים', 'חיבור', 'אדמה', 'יחד', 'ערבות הדדית', 'אחריות']
+    };
+
+    const FLOWERS = [
+        // מיקומים על הקיר השמאלי (הפרחים)
+        { color: 'yellow', x: 400, y: 650 },
+        { color: 'red', x: 800, y: 850 },
+        { color: 'blue', x: 1200, y: 400 },
+        { color: 'purple', x: 1600, y: 750 },
+        { color: 'pink', x: 250, y: 900 },
+        { color: 'white', x: 950, y: 250 },
+        { color: 'white', x: 1500, y: 150 },
+        
+        // מיקומים על הקיר הימני (הפרחים)
+        { color: 'yellow', x: 4100, y: 600 },
+        { color: 'red', x: 4400, y: 750 },
+        { color: 'blue', x: 4700, y: 450 },
+        { color: 'purple', x: 5000, y: 850 },
+        { color: 'pink', x: 5300, y: 900 },
+        { color: 'white', x: 4500, y: 200 },
+        { color: 'white', x: 5200, y: 300 },
+    ];
+    
+    const container = document.getElementById('container');
+    
+    FLOWERS.forEach(flower => {
+        const hotspot = document.createElement('div');
+        hotspot.className = 'hotspot';
+        hotspot.style.right = `${flower.x}px`;
+        hotspot.style.top = `${flower.y}px`;
+        hotspot.dataset.color = flower.color;
+        container.appendChild(hotspot);
+    });
+
+    function getRandomWord(color) {
+        const words = WORDS_MAP[color];
+        if (!words || words.length === 0) return null;
+        const randomIndex = Math.floor(Math.random() * words.length);
+        return words[randomIndex];
+    }
+
+    function showWord(hotspot, word) {
+        if (!word) return;
+        const wordDisplay = document.createElement('div');
+        wordDisplay.className = 'word-display';
+        wordDisplay.textContent = word;
+        
+        wordDisplay.style.left = `${hotspot.offsetLeft + hotspot.offsetWidth / 2}px`;
+        wordDisplay.style.top = `${hotspot.offsetTop - 50}px`;
+        
+        container.appendChild(wordDisplay);
+    }
+    
+    container.addEventListener('click', (event) => {
+        const hotspot = event.target;
+        if (hotspot && hotspot.classList.contains('hotspot')) {
+            const color = hotspot.dataset.color;
+            const word = getRandomWord(color);
+            if (word) {
+                showWord(hotspot, word);
+            }
+        }
+    });
+
+    function reset() {
+        const words = document.querySelectorAll('.word-display');
+        words.forEach(word => word.remove());
+    }
+</script>
+
+</body>
+</html>
