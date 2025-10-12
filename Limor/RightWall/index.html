@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>גן של תקווה - קיר ימני</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            font-family: 'Arial Hebrew', sans-serif;
+            cursor: pointer;
+            background-color: #000;
+        }
+
+        #wall3 {
+            width: 1920px;
+            height: 1080px;
+            background-image: url('https://i.postimg.cc/ZYQ5vKHP/image.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            position: relative;
+        }
+        
+        /* נקודות חמות */
+        .hotspot {
+            position: absolute;
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background-color: rgba(255, 255, 255, 0.3);
+            border: 2px solid rgba(255, 255, 255, 0.7);
+            cursor: pointer;
+            z-index: 10;
+            transform: translate(-50%, -50%);
+            transition: transform 0.3s ease-in-out;
+        }
+        .hotspot:hover {
+            transform: scale(1.2) translate(-42%, -42%);
+            background-color: rgba(255, 255, 255, 0.5);
+        }
+
+        /* מילים */
+        .word-display {
+            position: absolute;
+            color: #FFF;
+            font-size: 80px;
+            font-weight: bold;
+            text-shadow: 4px 4px 10px rgba(0,0,0,0.9);
+            text-align: center;
+            white-space: nowrap;
+            animation: fadeIn 1.5s forwards;
+            pointer-events: none;
+            z-index: 20;
+            transform: translate(-50%, -50%);
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.8) translate(-60%, -60%); }
+            to { opacity: 1; transform: scale(1) translate(-50%, -50%); }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="wall3" class="wall"></div>
+    
+<script>
+    const WORDS_MAP = {
+        yellow: ['אור', 'תקווה', 'שמחה'],
+        red: ['אהבה', 'אומץ', 'חוזק', 'נחישות'],
+        blue: ['שקט', 'ביטחון', 'שלווה', 'מרגוע'],
+        purple: ['אמונה', 'כבוד', 'חופש'],
+        pink: ['טוב לב', 'דאגה', 'אכפתיות', 'עזרה', 'חמלה'],
+        white: ['התחלה', 'צמיחה', 'שלום', 'טוהר', 'חלום'],
+        brown: ['שורשים', 'חיבור', 'אדמה', 'יחד', 'ערבות הדדית', 'אחריות']
+    };
+
+    // מיקומים חדשים ומותאמים לקיר בודד (1920x1080)
+    const HOTSPOTS = [
+        { color: 'yellow', x: 200, y: 800 },
+        { color: 'red', x: 500, y: 900 },
+        { color: 'blue', x: 800, y: 750 },
+        { color: 'purple', x: 1100, y: 850 },
+        { color: 'pink', x: 1500, y: 950 },
+        { color: 'white', x: 1700, y: 700 },
+        { color: 'brown', x: 1300, y: 650 },
+        { color: 'black', x: 960, y: 540 } // נקודה מרכזית למילה "התחלות"
+    ];
+    
+    // מפה חדשה עם המילה הנוספת
+    const NEW_WORDS_MAP = {
+        ...WORDS_MAP,
+        'black': ['התחלות']
+    };
+
+    const wall = document.getElementById('wall3');
+    
+    HOTSPOTS.forEach(hotspotData => {
+        const hotspot = document.createElement('div');
+        hotspot.className = 'hotspot';
+        hotspot.style.right = `${hotspotData.x}px`;
+        hotspot.style.top = `${hotspotData.y}px`;
+        hotspot.dataset.color = hotspotData.color;
+        wall.appendChild(hotspot);
+    });
+
+    function getRandomWord(color) {
+        const words = NEW_WORDS_MAP[color] || WORDS_MAP[color];
+        if (!words || words.length === 0) return null;
+        const randomIndex = Math.floor(Math.random() * words.length);
+        return words[randomIndex];
+    }
+
+    function showWord(hotspot, word) {
+        if (!word) return;
+        const wordDisplay = document.createElement('div');
+        wordDisplay.className = 'word-display';
+        wordDisplay.textContent = word;
+        
+        const hotspotRect = hotspot.getBoundingClientRect();
+        wordDisplay.style.left = `${hotspotRect.left + hotspotRect.width / 2}px`;
+        wordDisplay.style.top = `${hotspotRect.top - 80}px`;
+
+        document.body.appendChild(wordDisplay);
+    }
+    
+    wall.addEventListener('click', (event) => {
+        const hotspot = event.target;
+        if (hotspot && hotspot.classList.contains('hotspot')) {
+            const color = hotspot.dataset.color;
+            const word = getRandomWord(color);
+            if (word) {
+                showWord(hotspot, word);
+                hotspot.style.pointerEvents = 'none';
+                hotspot.style.backgroundColor = 'rgba(255, 255, 255, 0.1)';
+                hotspot.style.border = '2px solid rgba(255, 255, 255, 0.3)';
+            }
+        }
+    });
+
+    function reset() {
+        const words = document.querySelectorAll('.word-display');
+        words.forEach(word => word.remove());
+        const hotspots = document.querySelectorAll('.hotspot');
+        hotspots.forEach(hotspot => {
+            hotspot.style.pointerEvents = 'auto';
+            hotspot.style.backgroundColor = 'rgba(255, 255, 255, 0.3)';
+            hotspot.style.border = '2px solid rgba(255, 255, 255, 0.7)';
+        });
+    }
+</script>
+
+</body>
+</html>
