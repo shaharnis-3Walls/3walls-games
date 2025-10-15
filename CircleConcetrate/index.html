@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>מיון ערכים — מעגלים קונצנטריים (גרירה ושחרור)</title>
+  <style>
+    :root{
+      --bg:#5b46c5;
+      --paper:#ffffff;
+      --canvas:#F6EFE8;
+      --ring1:#FFD166;
+      --ring2:#06D6A0;
+      --ring3:#118AB2;
+      --ring-outline:6px;
+      --chip-w:160px;
+      --chip-h:56px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);font-family:system-ui,-apple-system,"Segoe UI",Roboto,Arial,"Noto Sans Hebrew",sans-serif;color:#222}
+    .wrap{max-width:1280px;margin:0 auto;padding:24px}
+    h1{color:white;margin:0 0 12px;font-weight:700;font-size:22px}
+    .toolbar{display:flex;gap:8px;justify-content:flex-end}
+    .btn{background:#fff;border:1px solid #D0D0D0;border-radius:14px;padding:10px 16px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,.1)}
+    .btn:hover{box-shadow:0 4px 14px rgba(0,0,0,.12)}
+    .card{background:var(--paper);border-radius:22px;box-shadow:0 14px 40px rgba(0,0,0,.2);padding:40px;margin-top:6px}
+    .stage{position:relative;width:1100px;height:619px;border:1px solid rgba(0,0,0,.18);background:var(--canvas);border-radius:18px;overflow:hidden;margin:0 auto}
+    .ring{position:absolute;border-radius:50%}
+    .dot{position:absolute;width:8px;height:8px;background:#333;border-radius:50%}
+    .chip{position:absolute;display:flex;align-items:center;justify-content:center;width:var(--chip-w);height:var(--chip-h);background:#fff;border:1px solid #ddd;border-radius:16px;box-shadow:0 6px 18px rgba(0,0,0,.08);user-select:none;white-space:nowrap;padding-inline:14px;cursor:grab;touch-action:none}
+    .chip:active{cursor:grabbing}
+    .legend{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:12px}
+    .legend .badge{display:inline-block;width:14px;height:14px;border-radius:50%;margin-left:6px}
+    .help{color:#efeefd;font-size:14px;line-height:1.7;margin-top:14px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <h1>מיון ערכים – גררו את המילים אל תוך המעגלים</h1>
+      <div class="toolbar">
+        <button id="resetBtn" class="btn">אפס</button>
+        <button id="exportBtn" class="btn">ייצוא JSON</button>
+      </div>
+    </div>
+    <div class="card">
+      <div id="stage" class="stage" aria-label="קנבס מיון ערכים"></div>
+      <div class="legend" dir="rtl">
+        <div><span class="badge" style="background:var(--ring1)"></span>פנים פנימי</div>
+        <div><span class="badge" style="background:var(--ring2)"></span>פנים אמצעי</div>
+        <div><span class="badge" style="background:var(--ring3)"></span>פנים חיצוני</div>
+      </div>
+    </div>
+    <p class="help">טיפים: ניתן לגרור כל תגית פנימה. שחרור בתוך אחת הטבעות יגרום להצמדת התגית למסלול הטבעת בזווית הנוכחית. המיקומים נשמרים אוטומטית בדפדפן. אפשר לאפס הכל או לייצא JSON.</p>
+  </div>
+<script>
+(function(){
+  const CONFIG = {
+    stageW: 1100,
+    stageH: 619,
+    ringThickness: 64,
+    rings: [
+      { name: 'פנים פנימי', radius: 110, color: getCSS('--ring1') },
+      { name: 'פנים אמצעי', radius: 190, color: getCSS('--ring2') },
+      { name: 'פנים חיצוני', radius: 270, color: getCSS('--ring3') },
+    ],
+    labels: [
+      'אומץ לב','יושרה','חוש צדק','נחישות','הקרבה','התמדה','אחריות','נתינה','אהבת מולדת','רעות וחברות','תושייה'
+    ],
+    chip: { w: parseInt(getCSS('--chip-w')), h: parseInt(getCSS('--chip-h')) }
+  };
+  const STORAGE_KEY = 'concentric-values-layout-html-v1';
+  const stage = document.getElementById('stage');
+  const center = { x: CONFIG.stageW/2, y: CONFIG.stageH/2 };
+  function getCSS(name){ return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+  function polarToCartesian(cx, cy, r, a){ return { x: cx + r*Math.cos(a), y: cy + r*Math.sin(a) }; }
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+  CONFIG.rings.forEach((r)=>{
+    const el = document.createElement('div');
+    el.className = 'ring';
+    const d = r.radius*2;
+    el.style.left = (center.x - r.radius) + 'px';
+    el.style.top  = (center.y - r.radius) + 'px';
+    el.style.width = d + 'px';
+    el.style.height = d + 'px';
+    el.style.background = hexToRGBA(r.color, 0.12);
+    el.style.outline = getCSS('--ring-outline') + ' solid ' + hexToRGBA(r.color,0.33);
+    stage.appendChild(el);
+  });
+  const dot = document.createElement('div');
+  dot.className='dot';
+  dot.style.left = (center.x-4)+'px';
+  dot.style.top  = (center.y-4)+'px';
+  stage.appendChild(dot);
+  const chips = {};
+  const saved = localStorage.getItem(STORAGE_KEY);
+  let initialPositions;
+  if(saved){
+    try { initialPositions = JSON.parse(saved); } catch(e){}
+  }
+  if(!initialPositions){
+    const R = Math.min(CONFIG.stageW, CONFIG.stageH)/2 + 40;
+    const step = (Math.PI*2)/CONFIG.labels.length;
+    const start = -Math.PI/2;
+    initialPositions = CONFIG.labels.map((label,i)=>{
+      const a = start + i*step;
+      const p = polarToCartesian(center.x, center.y, R, a);
+      return { id:'chip-'+i, text:label, x:p.x-CONFIG.chip.w/2, y:p.y-CONFIG.chip.h/2, ringIndex:-1 };
+    });
+  }
+  initialPositions.forEach(c=>createChip(c));
+  function createChip(data){
+    const el = document.createElement('div');
+    el.className = 'chip';
+    el.textContent = data.text;
+    el.style.left = data.x + 'px';
+    el.style.top  = data.y + 'px';
+    el.style.width = CONFIG.chip.w + 'px';
+    el.style.height = CONFIG.chip.h + 'px';
+    el.dataset.id = data.id;
+    el.dataset.ringIndex = data.ringIndex;
+    let dragging=false; let offX=0, offY=0;
+    el.addEventListener('pointerdown', (e)=>{
+      dragging = true; el.setPointerCapture(e.pointerId);
+      const r = el.getBoundingClientRect();
+      offX = e.clientX - r.left; offY = e.clientY - r.top;
+    });
+    window.addEventListener('pointermove', (e)=>{
+      if(!dragging) return;
+      const rect = stage.getBoundingClientRect();
+      const nx = e.clientX - rect.left - offX;
+      const ny = e.clientY - rect.top  - offY;
+      place(el, nx, ny);
+    });
+    window.addEventListener('pointerup', (e)=>{
+      if(!dragging) return; dragging=false; try{ el.releasePointerCapture(e.pointerId);}catch{}
+      snapToRing(el);
+      persist();
+    });
+    stage.appendChild(el);
+    chips[data.id] = el;
+  }
+  function place(el, x, y){
+    const maxX = CONFIG.stageW - CONFIG.chip.w;
+    const maxY = CONFIG.stageH - CONFIG.chip.h;
+    el.style.left = Math.max(0, Math.min(maxX, x)) + 'px';
+    el.style.top  = Math.max(0, Math.min(maxY, y)) + 'px';
+  }
+  function snapToRing(el){
+    const chip = rectCenter(el);
+    const d = dist(chip, center);
+    let ringIndex = -1;
+    for(let i=0;i<CONFIG.rings.length;i++){
+      if(d <= CONFIG.rings[i].radius){ ringIndex=i; break; }
+    }
+    if(ringIndex>=0){
+      const laneR = CONFIG.rings[ringIndex].radius - CONFIG.ringThickness/2;
+      const angle = Math.atan2(chip.y - center.y, chip.x - center.x);
+      const snap = polarToCartesian(center.x, center.y, laneR, angle);
+      const nx = snap.x - CONFIG.chip.w/2;
+      const ny = snap.y - CONFIG.chip.h/2;
+      place(el, nx, ny);
+      el.dataset.ringIndex = String(ringIndex);
+    } else {
+      el.dataset.ringIndex = '-1';
+    }
+  }
+  function rectCenter(el){
+    const x = parseFloat(el.style.left)||0;
+    const y = parseFloat(el.style.top)||0;
+    return { x: x + CONFIG.chip.w/2, y: y + CONFIG.chip.h/2 };
+  }
+  function persist(){
+    const payload = Object.values(chips).map((el)=>({ id: el.dataset.id, text: el.textContent, x: parseFloat(el.style.left)||0, y: parseFloat(el.style.top)||0, ringIndex: parseInt(el.dataset.ringIndex||'-1',10) }));
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(payload));
+  }
+  function exportJSON(){
+    const data = localStorage.getItem(STORAGE_KEY);
+    const blob = new Blob([data || '[]'], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href=url; a.download='values-layout.json'; a.click();
+    URL.revokeObjectURL(url);
+  }
+  function resetAll(){
+    localStorage.removeItem(STORAGE_KEY);
+    Object.values(chips).forEach(el=>el.remove());
+    Object.keys(chips).forEach(k=>delete chips[k]);
+    const R = Math.min(CONFIG.stageW, CONFIG.stageH)/2 + 40;
+    const step = (Math.PI*2)/CONFIG.labels.length; const start=-Math.PI/2;
+    CONFIG.labels.forEach((label,i)=>{
+      const a = start + i*step; const p = polarToCartesian(center.x, center.y, R, a);
+      createChip({ id:'chip-'+i, text:label, x:p.x-CONFIG.chip.w/2, y:p.y-CONFIG.chip.h/2, ringIndex:-1 });
+    });
+  }
+  document.getElementById('exportBtn').addEventListener('click', exportJSON);
+  document.getElementById('resetBtn').addEventListener('click', resetAll);
+  function hexToRGBA(hex, alpha){
+    if(!hex || typeof hex !== 'string') return hex;
+    if(hex.startsWith('rgb')){
+      if(alpha==null) return hex;
+      const nums = hex.replace(/rgba?\(|\)|\s/g,'').split(',').map(Number);
+      const [r,g,b] = nums; return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+    const c = hex.replace('#','');
+    const bigint = parseInt(c.length===3? c.split('').map(ch=>ch+ch).join('') : c, 16);
+    const r = (bigint >> 16) & 255, g = (bigint >>8) & 255, b = bigint & 255;
+    return `rgba(${r}, ${g}, ${b}, ${alpha==null?1:alpha})`;
+  }
+})();
+</script>
+</body>
+</html>
