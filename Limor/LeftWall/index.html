@@ -12,27 +12,43 @@
             font-family: 'Arial Hebrew', sans-serif;
             cursor: pointer;
             background-color: #000;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
         #wall1 {
-            width: 1920px;
-            height: 1080px;
+            width: 100vw;
+            height: 100vh;
             background-image: url('https://i.postimg.cc/wjwqHq1s/image.png');
-            background-size: 100% calc(100% + 4px);
-            background-position: center top;
+            background-size: 100% 100%;
+            background-position: center;
             background-repeat: no-repeat;
             position: relative;
-            overflow: hidden;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        
+        /* Wrapper to maintain aspect ratio */
+        .wall-wrapper {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
         
         /* נקודות חמות */
         .hotspot {
             position: absolute;
-            width: 80px;
-            height: 80px;
+            width: 4.2vw;
+            height: 7.4vh;
             border-radius: 50%;
             background-color: rgba(255, 255, 255, 0.3);
-            border: 2px solid rgba(255, 255, 255, 0.7);
+            border: 0.1vw solid rgba(255, 255, 255, 0.7);
             cursor: pointer;
             z-index: 10;
             transform: translate(-50%, -50%);
@@ -47,9 +63,9 @@
         .word-display {
             position: absolute;
             color: #FFF;
-            font-size: 80px;
+            font-size: 4.2vw;
             font-weight: bold;
-            text-shadow: 4px 4px 10px rgba(0,0,0,0.9);
+            text-shadow: 0.2vw 0.2vw 0.5vw rgba(0,0,0,0.9);
             text-align: center;
             white-space: nowrap;
             animation: fadeIn 1.5s forwards;
@@ -78,16 +94,16 @@
         brown: ['שורשים', 'חיבור', 'אדמה', 'יחד', 'ערבות הדדית', 'אחריות']
     };
 
-    // מיקומים של הנקודות החמות על הקיר השמאלי
+    // מיקומים של הנקודות החמות על הקיר השמאלי (באחוזים מהרוחב והגובה)
     const HOTSPOTS = [
-        { color: 'yellow', x: 250, y: 700 },
-        { color: 'red', x: 500, y: 850 },
-        { color: 'blue', x: 850, y: 600 },
-        { color: 'purple', x: 1100, y: 800 },
-        { color: 'pink', x: 1500, y: 950 },
-        { color: 'white', x: 1650, y: 400 },
-        { color: 'brown', x: 1350, y: 750 },
-        { color: 'black', x: 960, y: 540 } // נקודה מרכזית למילה "תקווה"
+        { color: 'yellow', x: 13.02, y: 64.81 },  // 250/1920 * 100, 700/1080 * 100
+        { color: 'red', x: 26.04, y: 78.70 },     // 500/1920 * 100, 850/1080 * 100
+        { color: 'blue', x: 44.27, y: 55.56 },    // 850/1920 * 100, 600/1080 * 100
+        { color: 'purple', x: 57.29, y: 74.07 },  // 1100/1920 * 100, 800/1080 * 100
+        { color: 'pink', x: 78.13, y: 87.96 },    // 1500/1920 * 100, 950/1080 * 100
+        { color: 'white', x: 85.94, y: 37.04 },   // 1650/1920 * 100, 400/1080 * 100
+        { color: 'brown', x: 70.31, y: 69.44 },   // 1350/1920 * 100, 750/1080 * 100
+        { color: 'black', x: 50.00, y: 50.00 }    // 960/1920 * 100, 540/1080 * 100 - נקודה מרכזית למילה "תקווה"
     ];
     
     const NEW_WORDS_MAP = {
@@ -100,8 +116,8 @@
     HOTSPOTS.forEach(hotspotData => {
         const hotspot = document.createElement('div');
         hotspot.className = 'hotspot';
-        hotspot.style.right = `${hotspotData.x}px`;
-        hotspot.style.top = `${hotspotData.y}px`;
+        hotspot.style.right = `${hotspotData.x}%`;
+        hotspot.style.top = `${hotspotData.y}%`;
         hotspot.dataset.color = hotspotData.color;
         wall.appendChild(hotspot);
     });
@@ -120,8 +136,9 @@
         wordDisplay.textContent = word;
         
         const hotspotRect = hotspot.getBoundingClientRect();
+        const wallRect = wall.getBoundingClientRect();
         wordDisplay.style.left = `${hotspotRect.left + hotspotRect.width / 2}px`;
-        wordDisplay.style.top = `${hotspotRect.top - 80}px`;
+        wordDisplay.style.top = `${hotspotRect.top - (wallRect.height * 0.074)}px`;
 
         document.body.appendChild(wordDisplay);
     }
