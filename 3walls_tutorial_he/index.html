@@ -16,33 +16,6 @@
             display: block;
         }
 
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            text-align: center;
-            z-index: 100;
-        }
-        .btn {
-            background-color: #e94560;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-            margin: 0 10px;
-            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
-            transition: all 0.2s ease-in-out;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.6);
-        }
-        .btn:active {
-            transform: translateY(0);
-            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
-        }
         #loadingScreen {
             position: fixed;
             top: 0;
@@ -83,14 +56,16 @@
             transform: scale(0.5) translateZ(-20px);
         }
         #textOverlay {
-            position: absolute;
-            top: 50%;
+            position: fixed;
+            top: 20px;
             left: 50%;
-            transform: translate(-50%, -50%);
+            transform: translateX(-50%);
             z-index: 50;
             pointer-events: none;
             text-align: center;
             direction: rtl;
+            opacity: 0;
+            animation: fadeInText 0.5s ease-out 1s forwards;
         }
         .text-line {
             font-size: clamp(1.5rem, 4vw, 3rem);
@@ -99,24 +74,17 @@
             text-shadow: 0 0 20px rgba(233, 69, 96, 0.8),
                          0 0 40px rgba(233, 69, 96, 0.6),
                          2px 2px 4px rgba(0, 0, 0, 0.8);
-            cursor: pointer;
-            pointer-events: auto;
-            transition: all 0.3s ease;
             user-select: none;
             white-space: nowrap;
-        }
-        .text-line:hover {
-            transform: scale(1.1);
-            text-shadow: 0 0 30px rgba(233, 69, 96, 1),
-                         0 0 50px rgba(233, 69, 96, 0.8),
-                         2px 2px 4px rgba(0, 0, 0, 0.8);
-        }
-        .text-line.dragging {
-            opacity: 0.7;
         }
         .word {
             display: inline-block;
             margin: 0 clamp(2px, 0.5vw, 5px);
+        }
+        @keyframes fadeInText {
+            to {
+                opacity: 1;
+            }
         }
     </style>
 </head>
@@ -143,11 +111,6 @@
             <span class="word" style="color: #00f5d4;">בעצמכם</span>
             <span class="word" style="color: #ff6b6b;">😉</span>
         </div>
-    </div>
-
-    <div id="controls">
-        <button id="restartBtn" class="btn">אתחל אותיות</button>
-        <button id="dropAllBtn" class="btn">שחרר הכל</button>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -354,10 +317,9 @@
             plane.position.z = 0;
             scene.add(plane);
 
-            // Hide loading screen - we're using CSS text now
+            // Hide loading screen
             setTimeout(() => {
                 document.getElementById('loadingScreen').classList.add('hidden');
-                initTextInteraction();
             }, 100);
 
             // Event Listeners
@@ -370,10 +332,6 @@
             document.addEventListener('touchstart', onTouchStart, false);
             document.addEventListener('touchmove', onTouchMove, false);
             document.addEventListener('touchend', onTouchEnd, false);
-            
-            document.getElementById('restartBtn').addEventListener('click', restartGame);
-            document.getElementById('dropAllBtn').addEventListener('click', dropAllLetters);
-
 
             animate();
         }
@@ -490,9 +448,10 @@
 
                 const mesh = new THREE.Mesh(geometry, material);
 
-                const x = (Math.random() - 0.5) * 120;
-                const y = (Math.random() - 0.5) * 80;
-                const z = -(Math.random() * 200 + 50);
+                // Position items near the top, just below the text
+                const x = (Math.random() - 0.5) * 60; // Narrower horizontal spread
+                const y = 15 + (Math.random() * 15); // Top area (y: 15 to 30)
+                const z = -(Math.random() * 30 + 5); // Closer to camera (z: -5 to -35)
                 mesh.position.set(x, y, z);
                 scene.add(mesh);
 
@@ -535,65 +494,6 @@
             // Store for animation
             starfields = { distant: distantStars, brighter: brighterStars };
         }
-
-        function initTextInteraction() {
-            const textLines = document.querySelectorAll('.text-line');
-            
-            textLines.forEach(line => {
-                let isDragging = false;
-                let startX, startY, currentX, currentY;
-                
-                line.addEventListener('mousedown', (e) => {
-                    isDragging = true;
-                    line.classList.add('dragging');
-                    startX = e.clientX - line.offsetLeft;
-                    startY = e.clientY - line.offsetTop;
-                });
-                
-                document.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
-                    
-                    currentX = e.clientX - startX;
-                    currentY = e.clientY - startY;
-                    
-                    line.style.transform = `translate(${currentX}px, ${currentY}px)`;
-                });
-                
-                document.addEventListener('mouseup', () => {
-                    if (isDragging) {
-                        isDragging = false;
-                        line.classList.remove('dragging');
-                    }
-                });
-                
-                // Touch support
-                line.addEventListener('touchstart', (e) => {
-                    isDragging = true;
-                    line.classList.add('dragging');
-                    const touch = e.touches[0];
-                    startX = touch.clientX - line.offsetLeft;
-                    startY = touch.clientY - line.offsetTop;
-                });
-                
-                document.addEventListener('touchmove', (e) => {
-                    if (!isDragging) return;
-                    
-                    const touch = e.touches[0];
-                    currentX = touch.clientX - startX;
-                    currentY = touch.clientY - startY;
-                    
-                    line.style.transform = `translate(${currentX}px, ${currentY}px)`;
-                });
-                
-                document.addEventListener('touchend', () => {
-                    if (isDragging) {
-                        isDragging = false;
-                        line.classList.remove('dragging');
-                    }
-                });
-            });
-        }
-
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -821,30 +721,6 @@
         function onTouchEnd(event) {
             event.preventDefault();
             onMouseUp(event);
-        }
-
-        function restartGame() {
-            // Reset text positions
-            const textLines = document.querySelectorAll('.text-line');
-            textLines.forEach(line => {
-                line.style.transform = 'translate(0, 0)';
-            });
-        }
-
-        function dropAllLetters() {
-            // Animate text lines falling
-            const textLines = document.querySelectorAll('.text-line');
-            textLines.forEach((line, index) => {
-                setTimeout(() => {
-                    line.style.transition = 'all 1s ease-in';
-                    line.style.transform = 'translateY(1000px) rotate(20deg)';
-                    
-                    setTimeout(() => {
-                        line.style.transition = 'all 0.5s ease-out';
-                        line.style.transform = 'translate(0, 0)';
-                    }, 1000);
-                }, index * 200);
-            });
         }
 
         // Helper function to calculate the visible area at a certain depth

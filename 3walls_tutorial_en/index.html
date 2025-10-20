@@ -16,33 +16,6 @@
             display: block;
         }
 
-        #controls {
-            position: absolute;
-            bottom: 20px;
-            width: 100%;
-            text-align: center;
-            z-index: 100;
-        }
-        .btn {
-            background-color: #e94560;
-            color: #fff;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 1rem;
-            cursor: pointer;
-            margin: 0 10px;
-            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
-            transition: all 0.2s ease-in-out;
-        }
-        .btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.6);
-        }
-        .btn:active {
-            transform: translateY(0);
-            box-shadow: 0 4px 15px rgba(233, 69, 96, 0.4);
-        }
         #loadingScreen {
             position: fixed;
             top: 0;
@@ -82,23 +55,34 @@
             opacity: 0;
             transform: scale(0.5) translateZ(-20px);
         }
-        #emoji {
-            position: absolute;
-            top: 50%;
+        #textOverlay {
+            position: fixed;
+            top: 20px;
             left: 50%;
-            transform: translate(-50%, -50%) translateY(100px);
-            font-size: 4rem;
+            transform: translateX(-50%);
             z-index: 50;
             pointer-events: none;
+            text-align: center;
             opacity: 0;
-            animation: fadeInEmoji 0.5s ease-out 1s forwards;
-            text-shadow: 0 0 20px rgba(233, 69, 96, 0.8),
-                         0 0 40px rgba(233, 69, 96, 0.6);
+            animation: fadeInText 0.5s ease-out 1s forwards;
         }
-        @keyframes fadeInEmoji {
+        .text-line {
+            font-size: clamp(1.5rem, 4vw, 3rem);
+            font-weight: bold;
+            margin: clamp(5px, 1vh, 10px) 0;
+            text-shadow: 0 0 20px rgba(233, 69, 96, 0.8),
+                         0 0 40px rgba(233, 69, 96, 0.6),
+                         2px 2px 4px rgba(0, 0, 0, 0.8);
+            user-select: none;
+            white-space: nowrap;
+        }
+        .word {
+            display: inline-block;
+            margin: 0 clamp(2px, 0.5vw, 5px);
+        }
+        @keyframes fadeInText {
             to {
                 opacity: 1;
-                transform: translate(-50%, -50%) translateY(90px);
             }
         }
     </style>
@@ -109,12 +93,25 @@
         <div class="loading-text">Loading 3D Scene...</div>
     </div>
 
-    <div id="emoji">😉</div>
-
-    <div id="controls">
-        <button id="restartBtn" class="btn">Restart Letters</button>
-        <button id="dropAllBtn" class="btn">Drop All</button>
+    <div id="textOverlay">
+        <div class="text-line">
+            <span class="word" style="color: #ff6b6b;">This</span>
+            <span class="word" style="color: #4ecdc4;">is</span>
+            <span class="word" style="color: #45b7d1;">a</span>
+            <span class="word" style="color: #f7b801;">link</span>
+            <span class="word" style="color: #f15bb5;">hotspot!</span>
+        </div>
+        <div class="text-line">
+            <span class="word" style="color: #00f5d4;">you</span>
+            <span class="word" style="color: #ff6b6b;">can</span>
+            <span class="word" style="color: #4ecdc4;">embed</span>
+            <span class="word" style="color: #45b7d1;">anything</span>
+            <span class="word" style="color: #f7b801;">embeddable!</span>
+            <span class="word" style="color: #f15bb5;">😉</span>
+        </div>
     </div>
+
+
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
@@ -126,10 +123,8 @@
         };
 
         let scene, camera, renderer, world;
-        const objects = []; // To store both mesh and physics body
         let mouse = new THREE.Vector2();
         let raycaster = new THREE.Raycaster();
-        let selectedObject = null;
         let plane;
         let starfields = {}; // To hold our starfield elements
         const floatingItems = []; // To store floating clickable items with their physics bodies
@@ -319,17 +314,10 @@
             plane.position.z = 0;
             scene.add(plane);
 
-            // Load font and create text
-            const fontLoader = new THREE.FontLoader();
-            fontLoader.load('https://threejs.org/examples/fonts/helvetiker_bold.typeface.json', function (font) {
-                createText(font);
-                // Hide loading screen after a short delay to ensure rendering
-                setTimeout(() => {
-                    document.getElementById('loadingScreen').classList.add('hidden');
-                    // Start letter reveal animation
-                    revealLetters();
-                }, 100);
-            });
+            // Hide loading screen and show text
+            setTimeout(() => {
+                document.getElementById('loadingScreen').classList.add('hidden');
+            }, 100);
 
             // Event Listeners
             window.addEventListener('resize', onWindowResize, false);
@@ -341,10 +329,6 @@
             document.addEventListener('touchstart', onTouchStart, false);
             document.addEventListener('touchmove', onTouchMove, false);
             document.addEventListener('touchend', onTouchEnd, false);
-            
-            document.getElementById('restartBtn').addEventListener('click', restartGame);
-            document.getElementById('dropAllBtn').addEventListener('click', dropAllLetters);
-
 
             animate();
         }
@@ -461,9 +445,10 @@
 
                 const mesh = new THREE.Mesh(geometry, material);
 
-                const x = (Math.random() - 0.5) * 120;
-                const y = (Math.random() - 0.5) * 80;
-                const z = -(Math.random() * 200 + 50);
+                // Position items near the top, just below the text
+                const x = (Math.random() - 0.5) * 60; // Narrower horizontal spread
+                const y = 15 + (Math.random() * 15); // Top area (y: 15 to 30)
+                const z = -(Math.random() * 30 + 5); // Closer to camera (z: -5 to -35)
                 mesh.position.set(x, y, z);
                 scene.add(mesh);
 
@@ -506,88 +491,6 @@
             // Store for animation
             starfields = { distant: distantStars, brighter: brighterStars };
         }
-
-        function createText(font) {
-            const textLines = [
-                "This is a link hotspot!",
-                "you can embed anything embedable!"
-            ];
-            const colors = [0xff6b6b, 0x4ecdc4, 0x45b7d1, 0xf7b801, 0xf15bb5, 0x00f5d4];
-
-            const textOptions = {
-                font: font,
-                size: 3,
-                height: 1,
-                curveSegments: 8, // Reduced from 12 for faster generation
-                bevelEnabled: true,
-                bevelThickness: 0.2,
-                bevelSize: 0.1,
-                bevelOffset: 0,
-                bevelSegments: 3 // Reduced from 5 for faster generation
-            };
-            
-            let yOffset = 5;
-
-            textLines.forEach(line => {
-                const textGeo = new THREE.TextGeometry(line, textOptions);
-                textGeo.computeBoundingBox();
-                const textWidth = textGeo.boundingBox.max.x - textGeo.boundingBox.min.x;
-
-                let xOffset = -textWidth / 2;
-                
-                // Split line into words for color assignment
-                const words = line.split(' ');
-                let wordIndex = 0;
-
-                for (let i = 0; i < line.length; i++) {
-                    const char = line[i];
-                    if (char === ' ') {
-                        xOffset += 1.5; // Space width
-                        wordIndex++; // Move to next word
-                        continue;
-                    }
-
-                    const letterGeo = new THREE.TextGeometry(char, textOptions);
-                    letterGeo.computeBoundingBox();
-                    const letterWidth = letterGeo.boundingBox.max.x - letterGeo.boundingBox.min.x;
-                    
-                    // Assign color based on word, not random per letter
-                    const color = colors[wordIndex % colors.length];
-                    
-                    const material = new THREE.MeshPhongMaterial({ 
-                        color: color,
-                        transparent: true,
-                        opacity: 0 // Start invisible
-                    });
-                    const mesh = new THREE.Mesh(letterGeo, material);
-                    
-                    mesh.position.set(xOffset, yOffset, 0.5); // Slightly forward to prevent z-fighting
-                    mesh.scale.set(0.5, 0.5, 0.5); // Start small
-                    scene.add(mesh);
-
-                    // Physics Body
-                    const shape = new CANNON.Box(new CANNON.Vec3(letterWidth / 2, textOptions.size / 2, textOptions.height / 2));
-                    const body = new CANNON.Body({
-                        mass: 1, // Give it mass
-                        position: new CANNON.Vec3(mesh.position.x, mesh.position.y, mesh.position.z),
-                    });
-                    body.addShape(shape);
-                    body.type = CANNON.Body.STATIC; // Start as a static body
-                    world.addBody(body);
-
-                    // Store initial state for resetting
-                    const initialState = {
-                        position: body.position.clone(),
-                        quaternion: body.quaternion.clone()
-                    };
-
-                    objects.push({ mesh, body, initialState });
-                    xOffset += letterWidth + 0.2; // Add spacing between letters
-                }
-                 yOffset -= 7; // Move to the next line
-            });
-        }
-
 
         function onWindowResize() {
             camera.aspect = window.innerWidth / window.innerHeight;
@@ -632,17 +535,6 @@
                     // Prevent multiple hits in quick succession
                     hitItem.justHit = true;
                     setTimeout(() => { hitItem.justHit = false; }, 200);
-                }
-                return; // Don't select letters if we hit an item
-            }
-            
-            // Check for letter selection
-            const intersects = raycaster.intersectObjects(objects.map(o => o.mesh));
-            if (intersects.length > 0) {
-                selectedObject = objects.find(o => o.mesh === intersects[0].object);
-                if(selectedObject) {
-                    // Make the body static while dragging to "grab" it
-                    selectedObject.body.type = CANNON.Body.STATIC; 
                 }
             }
         }
@@ -773,34 +665,10 @@
             mouseVelocity.y = (event.clientY - lastMousePos.y);
             lastMousePos.x = event.clientX;
             lastMousePos.y = event.clientY;
-
-            raycaster.setFromCamera(mouse, camera);
-
-            // Check if hovering over letters for cursor change
-            const intersectsLetters = raycaster.intersectObjects(objects.map(o => o.mesh));
-            if (intersectsLetters.length > 0) {
-                document.body.style.cursor = 'pointer';
-            } else {
-                document.body.style.cursor = 'default';
-            }
-           
-            // Letter dragging logic
-            if (selectedObject) {
-                const intersects = raycaster.intersectObject(plane);
-                if (intersects.length > 0) {
-                    const point = intersects[0].point;
-                    selectedObject.body.position.copy(point);
-                }
-            }
         }
 
         function onMouseUp(event) {
-            if(selectedObject) {
-                selectedObject.body.type = CANNON.Body.DYNAMIC; // Back to dynamic
-                // Give it a push based on mouse velocity
-                selectedObject.body.velocity.set(mouseVelocity.x * 0.1, -mouseVelocity.y * 0.1, -5); 
-                selectedObject = null;
-            }
+            // Nothing to do here anymore
         }
 
         // Touch event handlers for mobile support
@@ -825,23 +693,7 @@
             onMouseUp(event);
         }
 
-        function restartGame() {
-            for (const obj of objects) {
-                obj.body.type = CANNON.Body.STATIC;
-                obj.body.position.copy(obj.initialState.position);
-                obj.body.quaternion.copy(obj.initialState.quaternion);
-                obj.body.velocity.set(0, 0, 0);
-                obj.body.angularVelocity.set(0, 0, 0);
-            }
-        }
 
-        function dropAllLetters() {
-            for (const obj of objects) {
-                if (obj.body.type === CANNON.Body.STATIC) {
-                    obj.body.type = CANNON.Body.DYNAMIC;
-                }
-            }
-        }
 
         // Helper function to calculate the visible area at a certain depth
         function getVisibleSizeAtZ(depth, camera) {
@@ -867,36 +719,6 @@
             physicsWalls.bottomWall.position.y = -viewSize.height / 2;
         }
         
-        function revealLetters() {
-            objects.forEach((obj, index) => {
-                setTimeout(() => {
-                    // Smooth animation using setInterval
-                    let progress = 0;
-                    const duration = 300; // milliseconds
-                    const steps = 20;
-                    const stepTime = duration / steps;
-                    
-                    const interval = setInterval(() => {
-                        progress += 1 / steps;
-                        if (progress >= 1) {
-                            progress = 1;
-                            clearInterval(interval);
-                        }
-                        
-                        // Ease out cubic
-                        const eased = 1 - Math.pow(1 - progress, 3);
-                        
-                        obj.mesh.material.opacity = eased;
-                        obj.mesh.scale.set(
-                            0.5 + (0.5 * eased),
-                            0.5 + (0.5 * eased),
-                            0.5 + (0.5 * eased)
-                        );
-                    }, stepTime);
-                }, index * 50); // Stagger by 50ms per letter
-            });
-        }
-        
         function animate() {
             requestAnimationFrame(animate);
 
@@ -912,23 +734,8 @@
                  item.mesh.quaternion.copy(item.body.quaternion);
             }
 
-            // Apply gravity manually to dynamic letters only
-            for (const obj of objects) {
-                if (obj.body.type === CANNON.Body.DYNAMIC) {
-                    const gravity = -9.82;
-                    const force = new CANNON.Vec3(0, gravity * obj.body.mass, 0);
-                    obj.body.applyForce(force, obj.body.position);
-                }
-            }
-
             // Step the physics world
             world.step(1 / 60);
-
-            // Update the Three.js objects with the physics bodies' positions
-            for (const obj of objects) {
-                obj.mesh.position.copy(obj.body.position);
-                obj.mesh.quaternion.copy(obj.body.quaternion);
-            }
 
             renderer.render(scene, camera);
         }
