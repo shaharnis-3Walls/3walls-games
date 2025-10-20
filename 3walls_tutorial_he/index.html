@@ -15,17 +15,7 @@
         canvas {
             display: block;
         }
-        #info {
-            position: absolute;
-            top: 20px;
-            width: 100%;
-            text-align: center;
-            z-index: 100;
-            display: block;
-            color: rgba(255, 255, 255, 0.8);
-            font-size: 1.2rem;
-            text-shadow: 0 0 10px rgba(233, 69, 96, 0.5);
-        }
+
         #controls {
             position: absolute;
             bottom: 20px;
@@ -135,8 +125,6 @@
         <div class="loader"></div>
         <div class="loading-text">טוען סצנה תלת-ממדית...</div>
     </div>
-    
-    <div id="info">פגעו באסטרואידים עם העכבר!</div>
 
     <div id="textOverlay">
         <div class="text-line" data-line="0">
@@ -178,16 +166,16 @@
         let selectedObject = null;
         let plane;
         let starfields = {}; // To hold our starfield elements
-        const asteroids = []; // To store asteroids with their physics bodies
+        const floatingItems = []; // To store floating clickable items with their physics bodies
         let lastMousePos = { x: 0, y: 0 };
         let mouseVelocity = new THREE.Vector3();
-        const asteroidPhysicsMaterial = new CANNON.Material('asteroidMaterial');
-        let score = 0; // Track asteroid hits
+        const itemPhysicsMaterial = new CANNON.Material('itemMaterial');
         let audioContext;
-        let hitSound;
+        let audioBuffers = {}; // Store different sounds
         let physicsWalls = {}; // Store physics walls for updating on resize
 
         // Initialize audio context and create hit sound
+        // Initialize audio context and create different sounds
         function initAudio() {
             if (audioContext) return; // Already initialized
             try {
@@ -196,27 +184,65 @@
                 if (audioContext.state === 'suspended') {
                     audioContext.resume();
                 }
-                // Create a simple hit sound using Web Audio API
-                hitSound = function() {
-                    // Resume context if needed
-                    if (audioContext.state === 'suspended') {
-                        audioContext.resume();
-                    }
+                
+                // Create different sound effects
+                audioBuffers.bounce = function() {
+                    if (audioContext.state === 'suspended') audioContext.resume();
                     const oscillator = audioContext.createOscillator();
                     const gainNode = audioContext.createGain();
-                    
                     oscillator.connect(gainNode);
                     gainNode.connect(audioContext.destination);
-                    
-                    oscillator.frequency.value = 200;
+                    oscillator.frequency.value = 400;
                     oscillator.type = 'sine';
-                    
                     gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.15);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.15);
+                };
+                
+                audioBuffers.pop = function() {
+                    if (audioContext.state === 'suspended') audioContext.resume();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.frequency.value = 600;
+                    oscillator.type = 'square';
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.1);
+                };
+                
+                audioBuffers.ding = function() {
+                    if (audioContext.state === 'suspended') audioContext.resume();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.frequency.value = 800;
+                    oscillator.type = 'triangle';
+                    gainNode.gain.setValueAtTime(0.25, audioContext.currentTime);
+                    gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+                    oscillator.start(audioContext.currentTime);
+                    oscillator.stop(audioContext.currentTime + 0.3);
+                };
+                
+                audioBuffers.whoosh = function() {
+                    if (audioContext.state === 'suspended') audioContext.resume();
+                    const oscillator = audioContext.createOscillator();
+                    const gainNode = audioContext.createGain();
+                    oscillator.connect(gainNode);
+                    gainNode.connect(audioContext.destination);
+                    oscillator.frequency.setValueAtTime(300, audioContext.currentTime);
+                    oscillator.frequency.exponentialRampToValueAtTime(100, audioContext.currentTime + 0.2);
+                    oscillator.type = 'sawtooth';
+                    gainNode.gain.setValueAtTime(0.2, audioContext.currentTime);
                     gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-                    
                     oscillator.start(audioContext.currentTime);
                     oscillator.stop(audioContext.currentTime + 0.2);
                 };
+                
                 console.log('Audio initialized successfully');
             } catch (e) {
                 console.warn('Audio initialization failed:', e);
@@ -237,7 +263,7 @@
             const wallMaterial = new CANNON.Material('wallMaterial');
             
             // Define interaction properties
-            const contactMaterial = new CANNON.ContactMaterial(wallMaterial, asteroidPhysicsMaterial, {
+            const contactMaterial = new CANNON.ContactMaterial(wallMaterial, itemPhysicsMaterial, {
                 friction: 0.1,
                 restitution: 0.9 // High restitution for a bouncy effect
             });
@@ -388,60 +414,97 @@
             const brighterStars = new THREE.Points(starGeometry2, starMaterial2);
             scene.add(brighterStars);
 
-            // Layer 3: Asteroids
-            const asteroidCount = 25;
-
-            for (let i = 0; i < asteroidCount; i++) {
-                const radius = Math.random() * 5 + 2; // random radius between 2 and 7
-                const detail = Math.random() > 0.5 ? 1 : 0; // Varied polygon detail
-                const baseGeometry = new THREE.IcosahedronGeometry(radius, detail);
-                const positions = baseGeometry.attributes.position.array;
-
-                // Deform vertices more aggressively to create a rocky, irregular shape
-                for (let j = 0; j < positions.length; j += 3) {
-                    const displacement = (Math.random() - 0.5) * radius * 1.2; // Increased from 0.6
-                    const vec = new THREE.Vector3(positions[j], positions[j+1], positions[j+2]).normalize().multiplyScalar(displacement);
-                    positions[j] += vec.x;
-                    positions[j+1] += vec.y;
-                    positions[j+2] += vec.z;
+            // Layer 3: Diverse Floating Clickable Items
+            const itemCount = 25;
+            
+            // Define different item types with their properties
+            const itemTypes = [
+                {
+                    name: 'sphere',
+                    createGeometry: (size) => new THREE.SphereGeometry(size, 16, 16),
+                    createPhysicsShape: (size) => new CANNON.Sphere(size),
+                    colors: [0xff6b9d, 0xff9ff3, 0xfeca57, 0x48dbfb, 0xff6348],
+                    response: 'bounce',
+                    sound: 'bounce'
+                },
+                {
+                    name: 'cube',
+                    createGeometry: (size) => new THREE.BoxGeometry(size * 2, size * 2, size * 2),
+                    createPhysicsShape: (size) => new CANNON.Box(new CANNON.Vec3(size, size, size)),
+                    colors: [0x00d2d3, 0x54a0ff, 0x5f27cd, 0xc8d6e5, 0x576574],
+                    response: 'spin',
+                    sound: 'whoosh'
+                },
+                {
+                    name: 'star',
+                    createGeometry: (size) => {
+                        const shape = new THREE.Shape();
+                        const outerRadius = size;
+                        const innerRadius = size * 0.5;
+                        for (let i = 0; i < 10; i++) {
+                            const angle = (i / 10) * Math.PI * 2;
+                            const radius = i % 2 === 0 ? outerRadius : innerRadius;
+                            const x = Math.cos(angle) * radius;
+                            const y = Math.sin(angle) * radius;
+                            if (i === 0) shape.moveTo(x, y);
+                            else shape.lineTo(x, y);
+                        }
+                        return new THREE.ExtrudeGeometry(shape, { depth: size * 0.5, bevelEnabled: false });
+                    },
+                    createPhysicsShape: (size) => new CANNON.Sphere(size),
+                    colors: [0xffd700, 0xffa502, 0xff6b81, 0xf8b500, 0xffdd59],
+                    response: 'colorChange',
+                    sound: 'ding'
+                },
+                {
+                    name: 'torus',
+                    createGeometry: (size) => new THREE.TorusGeometry(size, size * 0.4, 12, 24),
+                    createPhysicsShape: (size) => new CANNON.Sphere(size),
+                    colors: [0x6c5ce7, 0xa29bfe, 0xfd79a8, 0xe84393, 0x00b894],
+                    response: 'explode',
+                    sound: 'pop'
+                },
+                {
+                    name: 'octahedron',
+                    createGeometry: (size) => new THREE.OctahedronGeometry(size),
+                    createPhysicsShape: (size) => new CANNON.Sphere(size),
+                    colors: [0x0abde3, 0x00d2d3, 0x1dd1a1, 0x10ac84, 0x2e86de],
+                    response: 'pulse',
+                    sound: 'bounce'
                 }
-                baseGeometry.computeVertexNormals(); // Recalculate normals for correct lighting
+            ];
 
-                // Create varied asteroid colors (grays, browns, dark reds)
-                const colorVariants = [
-                    0x6b6b6b, // Dark gray
-                    0x4a4a4a, // Darker gray
-                    0x5c4a3a, // Brown-gray
-                    0x3d3d3d, // Very dark gray
-                    0x4a3c2f, // Dark brown
-                    0x5a4848, // Reddish-brown
-                ];
-                const asteroidColor = colorVariants[Math.floor(Math.random() * colorVariants.length)];
+            for (let i = 0; i < itemCount; i++) {
+                const itemType = itemTypes[Math.floor(Math.random() * itemTypes.length)];
+                const size = Math.random() * 3 + 1.5; // random size between 1.5 and 4.5
+                const color = itemType.colors[Math.floor(Math.random() * itemType.colors.length)];
                 
-                // Use MeshStandardMaterial for more realistic rendering with roughness
-                const asteroidMaterial = new THREE.MeshStandardMaterial({ 
-                    color: asteroidColor,
-                    roughness: 0.95, // Very rough surface
-                    metalness: 0.1,  // Slightly metallic (minerals)
-                    flatShading: true // Sharp edges for rocky appearance
+                const geometry = itemType.createGeometry(size);
+                const material = new THREE.MeshStandardMaterial({ 
+                    color: color,
+                    roughness: 0.4,
+                    metalness: 0.6,
+                    emissive: color,
+                    emissiveIntensity: 0.2
                 });
 
-                const mesh = new THREE.Mesh(baseGeometry, asteroidMaterial);
+                const mesh = new THREE.Mesh(geometry, material);
 
                 const x = (Math.random() - 0.5) * 120;
                 const y = (Math.random() - 0.5) * 80;
-                const z = -(Math.random() * 200 + 50); // Place them in a range
+                const z = -(Math.random() * 200 + 50);
                 mesh.position.set(x, y, z);
                 scene.add(mesh);
 
-                // Asteroid Physics Body
-                const shape = new CANNON.Sphere(radius);
+                // Physics Body
+                const shape = itemType.createPhysicsShape(size);
                 const body = new CANNON.Body({
-                    mass: radius * 5, // Mass based on size
+                    mass: size * 3,
                     position: new CANNON.Vec3(x, y, z),
-                    material: asteroidPhysicsMaterial // Assign material for bouncing
+                    material: itemPhysicsMaterial
                 });
                 body.addShape(shape);
+                
                 // Give them a random initial spin and drift
                 body.angularVelocity.set(
                     (Math.random() - 0.5) * 0.5,
@@ -453,12 +516,20 @@
                     (Math.random() - 0.5) * 5,
                     (Math.random() - 0.5) * 5
                 );
-                body.linearDamping = 0.01; // Prevent them from flying away forever, but slower
+                body.linearDamping = 0.01;
                 body.angularDamping = 0.05;
 
                 world.addBody(body);
                 
-                asteroids.push({ mesh, body });
+                floatingItems.push({ 
+                    mesh, 
+                    body, 
+                    type: itemType.name,
+                    response: itemType.response,
+                    sound: itemType.sound,
+                    originalColor: color,
+                    originalScale: { x: 1, y: 1, z: 1 }
+                });
             }
             
             // Store for animation
@@ -545,19 +616,151 @@
         }
         
         function onMouseDown(event) {
+            // Initialize audio on first click (user interaction)
+            if (!audioContext) {
+                initAudio();
+            }
+            
             // Update mouse position
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
             
             raycaster.setFromCamera(mouse, camera);
+            
+            // Check for floating item hits first
+            const intersectsItems = raycaster.intersectObjects(floatingItems.map(a => a.mesh));
+            if (intersectsItems.length > 0) {
+                const hitItem = floatingItems.find(a => a.mesh === intersectsItems[0].object);
+                if (hitItem && !hitItem.justHit) {
+                    // Handle different response types
+                    handleItemClick(hitItem);
+                    
+                    // Prevent multiple hits in quick succession
+                    hitItem.justHit = true;
+                    setTimeout(() => { hitItem.justHit = false; }, 200);
+                }
+                return; // Don't select letters if we hit an item
+            }
+            
+            // Check for letter selection
             const intersects = raycaster.intersectObjects(objects.map(o => o.mesh));
-
             if (intersects.length > 0) {
                 selectedObject = objects.find(o => o.mesh === intersects[0].object);
                 if(selectedObject) {
                     // Make the body static while dragging to "grab" it
                     selectedObject.body.type = CANNON.Body.STATIC; 
                 }
+            }
+        }
+        
+        // Handle different item click responses
+        function handleItemClick(item) {
+            // Play sound based on item type
+            if (audioBuffers[item.sound]) {
+                audioBuffers[item.sound]();
+            }
+            
+            // Apply response based on item type
+            switch(item.response) {
+                case 'bounce':
+                    // Strong random impulse
+                    const forceMagnitude = 150;
+                    const randomAngle = Math.random() * Math.PI * 2;
+                    const impulse = new CANNON.Vec3(
+                        Math.cos(randomAngle) * forceMagnitude,
+                        Math.sin(randomAngle) * forceMagnitude,
+                        (Math.random() - 0.5) * 100
+                    );
+                    item.body.applyImpulse(impulse, item.body.position);
+                    
+                    // Quick flash
+                    const originalColor = item.mesh.material.color.getHex();
+                    item.mesh.material.color.setHex(0xffffff);
+                    item.mesh.material.emissiveIntensity = 0.8;
+                    setTimeout(() => {
+                        item.mesh.material.color.setHex(originalColor);
+                        item.mesh.material.emissiveIntensity = 0.2;
+                    }, 100);
+                    break;
+                    
+                case 'spin':
+                    // Add strong angular velocity
+                    item.body.angularVelocity.set(
+                        (Math.random() - 0.5) * 20,
+                        (Math.random() - 0.5) * 20,
+                        (Math.random() - 0.5) * 20
+                    );
+                    // Gentle push
+                    const spinImpulse = new CANNON.Vec3(
+                        (Math.random() - 0.5) * 50,
+                        (Math.random() - 0.5) * 50,
+                        (Math.random() - 0.5) * 50
+                    );
+                    item.body.applyImpulse(spinImpulse, item.body.position);
+                    item.mesh.material.emissiveIntensity = 0.5;
+                    setTimeout(() => {
+                        item.mesh.material.emissiveIntensity = 0.2;
+                    }, 500);
+                    break;
+                    
+                case 'colorChange':
+                    // Cycle through rainbow colors
+                    const colors = [0xff6b9d, 0xfeca57, 0x48dbfb, 0x1dd1a1, 0xa29bfe, 0xfd79a8];
+                    const newColor = colors[Math.floor(Math.random() * colors.length)];
+                    item.mesh.material.color.setHex(newColor);
+                    item.mesh.material.emissive.setHex(newColor);
+                    item.originalColor = newColor;
+                    
+                    // Small impulse
+                    const colorImpulse = new CANNON.Vec3(
+                        (Math.random() - 0.5) * 30,
+                        (Math.random() - 0.5) * 30,
+                        (Math.random() - 0.5) * 30
+                    );
+                    item.body.applyImpulse(colorImpulse, item.body.position);
+                    break;
+                    
+                case 'explode':
+                    // Shrink and then expand with strong force
+                    item.mesh.scale.set(0.5, 0.5, 0.5);
+                    item.mesh.material.emissiveIntensity = 1.0;
+                    
+                    setTimeout(() => {
+                        item.mesh.scale.set(1.5, 1.5, 1.5);
+                        const explodeImpulse = new CANNON.Vec3(
+                            (Math.random() - 0.5) * 200,
+                            (Math.random() - 0.5) * 200,
+                            (Math.random() - 0.5) * 200
+                        );
+                        item.body.applyImpulse(explodeImpulse, item.body.position);
+                        
+                        setTimeout(() => {
+                            item.mesh.scale.set(1, 1, 1);
+                            item.mesh.material.emissiveIntensity = 0.2;
+                        }, 200);
+                    }, 100);
+                    break;
+                    
+                case 'pulse':
+                    // Pulsing animation with gentle movement
+                    let pulseCount = 0;
+                    const pulseInterval = setInterval(() => {
+                        const scale = 1 + Math.sin(Date.now() * 0.01) * 0.3;
+                        item.mesh.scale.set(scale, scale, scale);
+                        pulseCount++;
+                        if (pulseCount > 20) {
+                            clearInterval(pulseInterval);
+                            item.mesh.scale.set(1, 1, 1);
+                        }
+                    }, 50);
+                    
+                    const pulseImpulse = new CANNON.Vec3(
+                        (Math.random() - 0.5) * 60,
+                        (Math.random() - 0.5) * 60,
+                        (Math.random() - 0.5) * 60
+                    );
+                    item.body.applyImpulse(pulseImpulse, item.body.position);
+                    break;
             }
         }
 
@@ -571,46 +774,13 @@
             mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
             mouse.y = -(event.clientY / window.innerHeight) * 2 + 1;
 
-            // Calculate mouse velocity for hitting asteroids and throwing letters
+            // Calculate mouse velocity for throwing letters
             mouseVelocity.x = (event.clientX - lastMousePos.x);
             mouseVelocity.y = (event.clientY - lastMousePos.y);
             lastMousePos.x = event.clientX;
             lastMousePos.y = event.clientY;
 
             raycaster.setFromCamera(mouse, camera);
-
-            // Asteroid hitting logic
-            if (Math.abs(mouseVelocity.x) > 0 || Math.abs(mouseVelocity.y) > 0) {
-                 const intersectsAsteroids = raycaster.intersectObjects(asteroids.map(a => a.mesh));
-                 if (intersectsAsteroids.length > 0) {
-                    const hitAsteroid = asteroids.find(a => a.mesh === intersectsAsteroids[0].object);
-                    if (hitAsteroid && !hitAsteroid.justHit) {
-                        const forceMagnitude = 50; // Increased from 5 for more intensity
-                        const impulse = new CANNON.Vec3(mouseVelocity.x * forceMagnitude, -mouseVelocity.y * forceMagnitude, 0);
-                        hitAsteroid.body.applyImpulse(impulse, hitAsteroid.body.position);
-                        
-                        // Play hit sound
-                        if (hitSound) {
-                            hitSound();
-                        }
-                        
-                        // Update score and display
-                        score++;
-                        document.getElementById('info').textContent = `ניקוד: ${score} - המשיכו לפגוע באסטרואידים!`;
-                        
-                        // Prevent multiple hits in quick succession
-                        hitAsteroid.justHit = true;
-                        setTimeout(() => { hitAsteroid.justHit = false; }, 200);
-                        
-                        // Visual feedback - flash the asteroid
-                        const originalColor = hitAsteroid.mesh.material.color.getHex();
-                        hitAsteroid.mesh.material.color.setHex(0xff6b6b);
-                        setTimeout(() => {
-                            hitAsteroid.mesh.material.color.setHex(originalColor);
-                        }, 150);
-                    }
-                }
-            }
            
             // Letter dragging logic
             if (selectedObject) {
@@ -659,10 +829,6 @@
             textLines.forEach(line => {
                 line.style.transform = 'translate(0, 0)';
             });
-            
-            // Reset score
-            score = 0;
-            document.getElementById('info').textContent = 'פגעו באסטרואידים עם העכבר!';
         }
 
         function dropAllLetters() {
@@ -714,10 +880,10 @@
                 starfields.brighter.rotation.y += 0.0003; // Rotate the brighter stars a bit faster for parallax
             }
 
-            // Animate asteroids - now driven by physics
-            for (const asteroid of asteroids) {
-                 asteroid.mesh.position.copy(asteroid.body.position);
-                 asteroid.mesh.quaternion.copy(asteroid.body.quaternion);
+            // Animate floating items - driven by physics
+            for (const item of floatingItems) {
+                 item.mesh.position.copy(item.body.position);
+                 item.mesh.quaternion.copy(item.body.quaternion);
             }
 
             // Step the physics world
